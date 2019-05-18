@@ -20,7 +20,8 @@ var repos []Repo
 
 var opt struct {
 	LogLevel string `default:"INFO" split_words:"true"`
-	RepoList string `default:"sentinel.yaml"`
+	RepoList string `default:"sentinel.yaml" slit_words:"true"`
+	DataDir  string `default:"/data" split_words:"true"`
 	DbURL    string `default:"mongodb://root:root@mongodb:27017/sentinel?authSource=admin" split_words:"true"`
 }
 
@@ -50,6 +51,10 @@ func init() {
 		log.Printf(err.Error())
 		return
 	}
+}
+
+func (r *Repo) sync() error {
+
 }
 
 func (r *Repo) parse() error {
@@ -98,13 +103,18 @@ func (r *Repo) parse() error {
 	return nil
 }
 
-func main() {
+func dbConnect() {
 
 	var err error
 
-	log.Printf("Sentinel - A Git log analyzer v1.0.%%BUILD_ID%% Starting...")
+	mongo, err = db.Connect(opt.DbURL)
+	if err != nil {
+		log.Panicf("Failed to connect to database: " + err.Error())
+	}
+}
 
-	log.Printf("Reading repository definition file from '%s'...", opt.RepoList)
+func loadRepos() {
+
 	dat, err := ioutil.ReadFile(opt.RepoList)
 	if err != nil {
 		log.Printf("Failed to read repository definition: " + err.Error())
@@ -114,22 +124,37 @@ func main() {
 	if err != nil {
 		log.Printf("Failed to parse configuration file: %s", err.Error())
 	}
+}
 
-	// log.Printf("Connecting to database on '%s'...", opt.DbURL)
-	// mongo, err = db.Connect(opt.DbURL)
-	// if err != nil {
-	// 	log.Printf("Failed to connect to database: " + err.Error())
-	// 	return
-	// }
+func main() {
+
+	log.Printf("Sentinel - A Git log analyzer v1.0.%%BUILD_ID%% Starting...")
+
+	log.Printf("Loading repository definitions file from '%s'...", opt.RepoList)
+	loadRepos()
+
+	log.Printf("Connecting to database on '%s'...", opt.DbURL)
+	dbConnect()
 
 	for _, r := range repos {
-		err := r.parse()
-		if err == nil {
-			for _, c := range r.Commits {
-				j, _ := json.Marshal(c)
-				fmt.Printf("%s\n", j)
-			}
-		}
-	}
 
+		log.Printf("Processing repository '%s'...", r.Name)
+		err := r.sync()
+		if err != nil {
+			log.Printf("Failed to process repository '%s': %s", r.Name, err.Error())
+			continue
+		}
+
+		err = r.parse()
+		if err != nil {
+			log.Printf("Failed to process repository '%s': %s", r.Name, err.Error())
+			continue
+		}
+
+		for _, c := range r.Commits {
+			j, _ := json.Marshal(c)
+			fmt.Printf("%s\n", j)
+		}
+
+	}
 }
