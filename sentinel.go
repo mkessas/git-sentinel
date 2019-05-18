@@ -69,11 +69,9 @@ func (r *Repo) sync() error {
 
 		cmd := exec.CommandContext(ctx, "git", "clone", r.URL, "--bare", "-c", r.Dir)
 		cmd.Dir = opt.DataDir
-		out, err := cmd.Output()
+		_, err := cmd.Output()
 		if err != nil {
 			log.Panicf("error executing command: %s", err.Error())
-		} else {
-			fmt.Printf("%s\n", out)
 		}
 	} else {
 		ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
@@ -81,11 +79,9 @@ func (r *Repo) sync() error {
 
 		cmd := exec.CommandContext(ctx, "git", "fetch", "--all")
 		cmd.Dir = fullPath
-		out, err := cmd.Output()
+		_, err := cmd.Output()
 		if err != nil {
 			log.Panicf("error executing command: %s", err.Error())
-		} else {
-			fmt.Printf("%s\n", out)
 		}
 	}
 	return nil
@@ -94,6 +90,7 @@ func (r *Repo) sync() error {
 func (r *Repo) parse() error {
 
 	cmd := exec.Command("git", "log", "--all", "--shortstat", "--pretty=format:{\"author\":\"%aE\",\"date\":\"%aI\",\"title\":\"%f\",\"hash\":\"%h\",\"ref\":\"%D\"}")
+	cmd.Dir = path.Join(opt.DataDir, r.Dir)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -186,7 +183,7 @@ func main() {
 
 		log.Printf("Processing repository '%s'...", r.Name)
 		r.Dir = path.Base(r.URL) + ".git"
-		log.Printf("Working directory is %s", r.Dir)
+		log.Printf("Working directory is %s", path.Join(opt.DataDir, r.Dir))
 		err := r.sync()
 		if err != nil {
 			log.Printf("Failed to process repository '%s': %s", r.Name, err.Error())
