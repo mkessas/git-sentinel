@@ -3,10 +3,52 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "nohRbNhL692MlNbTWzUN6orvthM=",
+			"path": "github.com/9spokes/go/db",
+			"revision": "9e65a003785a0db3e7420c8e2c9afc1e2f4dce51",
+			"revisionTime": "2019-04-09T05:27:49Z"
+		},
+		{
+			"checksumSHA1": "tQNt4NQpd1u0h63gz0VfkWOR+pM=",
+			"path": "github.com/globalsign/mgo",
+			"revision": "eeefdecb41b842af6dc652aaea4026e8403e62df",
+			"revisionTime": "2018-10-15T13:59:52Z"
+		},
+		{
+			"checksumSHA1": "8M0m1bBTXUgVY4KcO7M+HOyf0+E=",
+			"path": "github.com/globalsign/mgo/bson",
+			"revision": "eeefdecb41b842af6dc652aaea4026e8403e62df",
+			"revisionTime": "2018-10-15T13:59:52Z"
+		},
+		{
+			"checksumSHA1": "1iY8pZI4hTyFuQtdp5AWghFqs50=",
+			"path": "github.com/globalsign/mgo/internal/json",
+			"revision": "eeefdecb41b842af6dc652aaea4026e8403e62df",
+			"revisionTime": "2018-10-15T13:59:52Z"
+		},
+		{
+			"checksumSHA1": "v3KpN1YL1/+YU9QgqgDl4kvvBco=",
+			"path": "github.com/globalsign/mgo/internal/sasl",
+			"revision": "eeefdecb41b842af6dc652aaea4026e8403e62df",
+			"revisionTime": "2018-10-15T13:59:52Z"
+		},
+		{
+			"checksumSHA1": "AKJfdKarCr3wFfBFAc1DozFQqbA=",
+			"path": "github.com/globalsign/mgo/internal/scram",
+			"revision": "eeefdecb41b842af6dc652aaea4026e8403e62df",
+			"revisionTime": "2018-10-15T13:59:52Z"
+		},
+		{
 			"checksumSHA1": "3vAl4C8FtummBi/k2yF6TM5XguY=",
 			"path": "github.com/kelseyhightower/envconfig",
 			"revision": "dd1402a4d99de9ac2f396cd6fcb957bc2c695ec1",
 			"revisionTime": "2018-05-17T19:45:57Z"
+		},
+		{
+			"checksumSHA1": "oNqPrS2edE8peI3ah2INe379k8E=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "51d6538a90f86fe93ac480b35f37b2be17fef232",
+			"revisionTime": "2018-11-15T11:05:04Z"
 		}
 	],
 	"rootPath": "github.com/mkessas/git-sentinel"

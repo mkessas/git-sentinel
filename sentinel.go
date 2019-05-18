@@ -4,17 +4,23 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os/exec"
 	"regexp"
 	"strconv"
 
+	"github.com/9spokes/go/db"
 	"github.com/kelseyhightower/envconfig"
+	"gopkg.in/yaml.v2"
 )
+
+var mongo db.MongoDB
+var repos []Repo
 
 var opt struct {
 	LogLevel string `default:"INFO" split_words:"true"`
-	RepoList string
+	RepoList string `default:"sentinel.yaml"`
 	DbURL    string `default:"mongodb://root:root@mongodb:27017/sentinel?authSource=admin" split_words:"true"`
 }
 
@@ -93,9 +99,30 @@ func (r *Repo) parse() error {
 }
 
 func main() {
+
+	var err error
+
 	log.Printf("Sentinel - A Git log analyzer v1.0.%%BUILD_ID%% Starting...")
 
-	for _, r := range []Repo{Repo{Name: "oh-my-zsh", URL: "", Commits: make([]Commit, 0)}} {
+	log.Printf("Reading repository definition file from '%s'...", opt.RepoList)
+	dat, err := ioutil.ReadFile(opt.RepoList)
+	if err != nil {
+		log.Printf("Failed to read repository definition: " + err.Error())
+		return
+	}
+	err = yaml.Unmarshal(dat, &repos)
+	if err != nil {
+		log.Printf("Failed to parse configuration file: %s", err.Error())
+	}
+
+	// log.Printf("Connecting to database on '%s'...", opt.DbURL)
+	// mongo, err = db.Connect(opt.DbURL)
+	// if err != nil {
+	// 	log.Printf("Failed to connect to database: " + err.Error())
+	// 	return
+	// }
+
+	for _, r := range repos {
 		err := r.parse()
 		if err == nil {
 			for _, c := range r.Commits {
