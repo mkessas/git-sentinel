@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/9spokes/go/db"
+	"github.com/globalsign/mgo/bson"
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 )
@@ -56,6 +56,32 @@ func init() {
 		log.Printf(err.Error())
 		return
 	}
+}
+
+func (r *Repo) save() error {
+
+	database := mongo.Session.DB("")
+
+	col := database.C("commits")
+
+	for _, c := range r.Commits {
+		r := bson.M{
+			"repo":   c.Repo,
+			"author": c.Author,
+			//"date":       time.d (c.Date)
+			"title":      c.Title,
+			"hash":       c.Hash,
+			"ref":        c.Ref,
+			"insertions": c.Insertions,
+			"deletions":  c.Deletions,
+		}
+		_, err := col.Upsert(r, r)
+		if err != nil {
+			log.Printf("error inserting row: %s", err.Error())
+		}
+	}
+
+	return nil
 }
 
 func (r *Repo) sync() error {
@@ -196,9 +222,9 @@ func main() {
 			continue
 		}
 
-		for _, c := range r.Commits {
-			j, _ := json.Marshal(c)
-			fmt.Printf("%s\n", j)
+		err = r.save()
+		if err != nil {
+			log.Printf("Failed to save stats to database: %s", err.Error())
 		}
 
 	}

@@ -1,3 +1,5 @@
 ---
 - name: Microsoft Terminal
   url: https://github.com/microsoft/terminal
+- name: Python Black
+  url: https://github.com/python/black
