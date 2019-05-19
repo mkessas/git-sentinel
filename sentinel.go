@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -31,17 +32,18 @@ var opt struct {
 
 // Repo represents a Git repository object composed of a name and a URL
 type Repo struct {
-	Name    string
-	Dir     string
-	URL     string
-	Commits []Commit
+	Name        string
+	Dir         string
+	URL         string
+	LastUpdated int64
+	Commits     []Commit
 }
 
 // Commit is a Git commit amended with lines added & deleted
 type Commit struct {
 	Repo       string `json:"repo"`
 	Author     string `json:"author"`
-	Date       string `json:"date"`
+	Date       int64  `json:"date"`
 	Title      string `json:"title"`
 	Hash       string `json:"hash"`
 	Ref        string `json:"ref"`
@@ -65,23 +67,40 @@ func (r *Repo) save() error {
 	col := database.C("commits")
 
 	for _, c := range r.Commits {
-		r := bson.M{
-			"repo":   c.Repo,
-			"author": c.Author,
-			//"date":       time.d (c.Date)
+		rec := bson.M{
+			"repo":       c.Repo,
+			"author":     c.Author,
+			"date":       c.Date,
 			"title":      c.Title,
 			"hash":       c.Hash,
 			"ref":        c.Ref,
 			"insertions": c.Insertions,
 			"deletions":  c.Deletions,
 		}
-		_, err := col.Upsert(r, r)
+		_, err := col.Upsert(rec, rec)
 		if err != nil {
-			log.Printf("error inserting row: %s", err.Error())
+			log.Printf("[%s] error inserting row: %s", r.Name, err.Error())
 		}
 	}
 
 	return nil
+}
+
+func (r *Repo) load() {
+
+	var last Commit
+
+	database := mongo.Session.DB("")
+
+	col := database.C("commits")
+
+	err := col.Find(bson.M{"repo": r.Name}).Sort("-date").Limit(1).One(&last)
+
+	if err != nil {
+		r.LastUpdated = 0
+	} else {
+		r.LastUpdated = last.Date
+	}
 }
 
 func (r *Repo) sync() error {
@@ -90,6 +109,8 @@ func (r *Repo) sync() error {
 
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 
+		log.Printf("[%s] Repository does not exist, cloning...", r.Name)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 		defer cancel()
 
@@ -97,17 +118,20 @@ func (r *Repo) sync() error {
 		cmd.Dir = opt.DataDir
 		_, err := cmd.Output()
 		if err != nil {
-			log.Panicf("error executing command: %s", err.Error())
+			log.Panicf("[%s] error executing command: %s", r.Name, err.Error())
 		}
 	} else {
+
+		log.Printf("[%s] Repository exists, fetching...", r.Name)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 		defer cancel()
 
-		cmd := exec.CommandContext(ctx, "git", "fetch", "--all")
+		cmd := exec.CommandContext(ctx, "git", "fetch", "origin", "+refs/*:refs/*")
 		cmd.Dir = fullPath
 		_, err := cmd.Output()
 		if err != nil {
-			log.Panicf("error executing command: %s", err.Error())
+			log.Panicf("[%s] error executing command: %s", r.Name, err.Error())
 		}
 	}
 	return nil
@@ -115,7 +139,12 @@ func (r *Repo) sync() error {
 
 func (r *Repo) parse() error {
 
-	cmd := exec.Command("git", "log", "--all", "--shortstat", "--pretty=format:{\"author\":\"%aE\",\"date\":\"%aI\",\"title\":\"%f\",\"hash\":\"%h\",\"ref\":\"%D\"}")
+	last := "--since=\"5 years ago\""
+	if r.LastUpdated > 0 {
+		last = fmt.Sprintf("--since=%d", r.LastUpdated)
+	}
+
+	cmd := exec.Command("git", "log", "--all", "--shortstat", last, "--pretty=format:{\"author\":\"%aE\",\"date\":%ct,\"title\":\"%f\",\"hash\":\"%h\",\"ref\":\"%D\"}")
 	cmd.Dir = path.Join(opt.DataDir, r.Dir)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -134,7 +163,6 @@ func (r *Repo) parse() error {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-
 		err := json.Unmarshal([]byte(line), &c)
 		if err == nil {
 			r.Commits = append(r.Commits, Commit{Repo: r.Name, Author: c.Author, Date: c.Date, Title: c.Title, Hash: c.Hash, Ref: c.Ref})
@@ -166,7 +194,7 @@ func dbConnect() {
 
 	mongo, err = db.Connect(opt.DbURL)
 	if err != nil {
-		log.Panicf("Failed to connect to database: " + err.Error())
+		log.Panicf("Failed to connect to database '%s': %s", opt.DbURL, err.Error())
 	}
 }
 
@@ -202,30 +230,41 @@ func main() {
 	log.Printf("Preparing scratch directory '%s'", opt.DataDir)
 	prepDataDir()
 
-	log.Printf("Connecting to database on '%s'...", opt.DbURL)
+	log.Printf("Connecting to database...")
 	dbConnect()
 
 	for _, r := range repos {
 
-		log.Printf("Processing repository '%s'...", r.Name)
+		log.Printf("[%s] Processing repository...", r.Name)
 		r.Dir = path.Base(r.URL) + ".git"
-		log.Printf("Working directory is %s", path.Join(opt.DataDir, r.Dir))
+		log.Printf("[%s] Working directory is %s", r.Name, path.Join(opt.DataDir, r.Dir))
 		err := r.sync()
 		if err != nil {
-			log.Printf("Failed to process repository '%s': %s", r.Name, err.Error())
+			log.Printf("[%s] Failed to process repository: %s", r.Name, err.Error())
 			continue
 		}
 
+		log.Printf("[%s] Determining last updated date...", r.Name)
+		r.load()
+		if r.LastUpdated == 0 {
+			log.Printf("[%s] No records found, grabbing the full history", r.Name)
+		} else {
+			log.Printf("[%s] Last updated on '%s'", r.Name, time.Unix(r.LastUpdated, 0))
+		}
+
+		log.Printf("[%s] Scanning repository history...", r.Name)
 		err = r.parse()
 		if err != nil {
-			log.Printf("Failed to process repository '%s': %s", r.Name, err.Error())
+			log.Printf("[%s] Failed to parse repository logs: %s", r.Name, err.Error())
 			continue
 		}
 
+		log.Printf("[%s] Scan complete, %d new entries will be saved", r.Name, len(r.Commits))
 		err = r.save()
 		if err != nil {
-			log.Printf("Failed to save stats to database: %s", err.Error())
+			log.Printf("[%s] Failed to save stats to database: %s", r.Name, err.Error())
 		}
 
+		log.Printf("[%s] Finished processing repository", r.Name)
 	}
 }
