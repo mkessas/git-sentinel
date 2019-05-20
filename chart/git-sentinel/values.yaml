@@ -21,7 +21,7 @@ postgresql:
   persistence:
     enabled: false
   initdbScripts:
-    init.sql: |
+    init.sh: |
       echo "Init script started"
       CREATE TABLE public.commits (
           hash character varying(12) NOT NULL PRIMARY KEY,
