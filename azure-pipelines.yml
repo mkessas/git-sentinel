@@ -1,0 +1,58 @@
+# Go
+# Build your Go project.
+# Add steps that test, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/go
+
+trigger:
+- master
+
+queue:
+  name: "Private-Ubuntu-1604"
+
+variables:
+  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
+
+steps:
+
+- script: |
+    ls -la
+    set
+    pwd
+  displayName: 'Display Build Environment'
+
+- script: |
+    mkdir -p $GOPATH/{src/$BUILD_DEFINITIONNAME,bin,pkg}
+    mv * $GOPATH/src/$BUILD_DEFINITIONNAME || :
+  displayName: 'Set up the Go workspace'
+
+- script: |
+    cd $GOPATH/src/$BUILD_DEFINITIONNAME
+        sed -i "s/%%BUILD_ID%%/"$(Build.BuildNumber)/g *go
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -v -o $BUILD_DEFINITIONNAME .
+    chmod +x $BUILD_DEFINITIONNAME
+  # workingDirectory: '$GOPATH/src/$BUILD_DEFINITIONNAME'
+  displayName: 'Build Service'
+
+## Docker update - user variables - rename repos - 20190517
+# docker build image
+- task: Docker@0
+  displayName: Build a Docker image
+  inputs:
+      azureSubscription: 'Infrastructure (44fd9d24-0993-420f-bb46-861fbd85bc9c)'
+      azureContainerRegistry: '$(azureContainerRegistry)'
+      dockerFile: '**/Dockerfile'
+      action: 'Build an image'
+      imageName: '$(Build.Repository.Name):$(Build.BuildNumber)-$(Build.SourceVersion)'
+  condition: and(succeeded(), or(startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
+
+# docker push image
+- task: Docker@0
+  displayName: Push the image
+  inputs:
+      azureSubscription: 'Infrastructure (44fd9d24-0993-420f-bb46-861fbd85bc9c)'
+      azureContainerRegistry: '$(azureContainerRegistry)'
+      action: 'Push an image'
+      imageName: '$(Build.Repository.Name):$(Build.BuildNumber)-$(Build.SourceVersion)'
+  condition: and(succeeded(), or(startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
+
+
