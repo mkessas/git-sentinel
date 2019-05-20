@@ -105,7 +105,7 @@ func (r *Repo) sync() error {
 		cmd.Dir = opt.DataDir
 		_, err := cmd.Output()
 		if err != nil {
-			log.Panicf("[%s] error executing command: %s", r.Name, err.Error())
+			return err
 		}
 	} else {
 
@@ -118,7 +118,7 @@ func (r *Repo) sync() error {
 		cmd.Dir = fullPath
 		_, err := cmd.Output()
 		if err != nil {
-			log.Panicf("[%s] error executing command: %s", r.Name, err.Error())
+			return err
 		}
 	}
 	return nil
