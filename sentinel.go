@@ -28,6 +28,7 @@ var opt struct {
 	LogLevel string `default:"INFO" split_words:"true"`
 	RepoList string `default:"sentinel.yaml" split_words:"true"`
 	DataDir  string `default:"/data" split_words:"true"`
+	Timeout  int    `default:"300"`
 	DbURL    string `default:"postgres://postgres:docker@localhost/sentinel?sslmode=disable" split_words:"true"`
 }
 
@@ -98,7 +99,7 @@ func (r *Repo) sync() error {
 
 		log.Printf("[%s] Repository does not exist, cloning...", r.Name)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(opt.Timeout)*time.Second)
 		defer cancel()
 
 		cmd := exec.CommandContext(ctx, "git", "clone", r.URL, "--bare", "-c", r.Dir)
@@ -111,7 +112,7 @@ func (r *Repo) sync() error {
 
 		log.Printf("[%s] Repository exists, fetching...", r.Name)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(opt.Timeout)*time.Second)
 		defer cancel()
 
 		cmd := exec.CommandContext(ctx, "git", "fetch", "origin", "+refs/*:refs/*")
