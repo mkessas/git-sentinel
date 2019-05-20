@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,20 +15,20 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/9spokes/go/db"
-	"github.com/globalsign/mgo/bson"
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
+
+	_ "github.com/lib/pq"
 )
 
-var mongo db.MongoDB
 var repos []Repo
+var db *sql.DB
 
 var opt struct {
 	LogLevel string `default:"INFO" split_words:"true"`
 	RepoList string `default:"sentinel.yaml" slit_words:"true"`
 	DataDir  string `default:"/data" split_words:"true"`
-	DbURL    string `default:"mongodb://root:root@mongodb:27017/sentinel?authSource=admin" split_words:"true"`
+	DbURL    string `default:"postgres://postgres:docker@localhost/sentinel?sslmode=disable" split_words:"true"`
 }
 
 // Repo represents a Git repository object composed of a name and a URL
@@ -62,22 +63,10 @@ func init() {
 
 func (r *Repo) save() error {
 
-	database := mongo.Session.DB("")
-
-	col := database.C("commits")
-
 	for _, c := range r.Commits {
-		rec := bson.M{
-			"repo":       c.Repo,
-			"author":     c.Author,
-			"date":       c.Date,
-			"title":      c.Title,
-			"hash":       c.Hash,
-			"ref":        c.Ref,
-			"insertions": c.Insertions,
-			"deletions":  c.Deletions,
-		}
-		_, err := col.Upsert(rec, rec)
+		_, err := db.Exec("INSERT INTO commits(hash, repo, author, date, title, ref, insertions, deletions) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+			c.Hash, c.Repo, c.Author, c.Date, c.Title, c.Ref, c.Insertions, c.Deletions)
+
 		if err != nil {
 			log.Printf("[%s] error inserting row: %s", r.Name, err.Error())
 		}
@@ -88,18 +77,16 @@ func (r *Repo) save() error {
 
 func (r *Repo) load() {
 
-	var last Commit
+	var date int64
 
-	database := mongo.Session.DB("")
-
-	col := database.C("commits")
-
-	err := col.Find(bson.M{"repo": r.Name}).Sort("-date").Limit(1).One(&last)
-
-	if err != nil {
+	err := db.QueryRow("SELECT date FROM commits WHERE repo = $1 ORDER BY date DESC LIMIT 1", r.Name).Scan(&date)
+	switch {
+	case err == sql.ErrNoRows:
 		r.LastUpdated = 0
-	} else {
-		r.LastUpdated = last.Date
+	case err != nil:
+		fmt.Printf("[%s] Failed to execute query: %s", r.Name, err.Error())
+	default:
+		r.LastUpdated = date
 	}
 }
 
@@ -141,7 +128,7 @@ func (r *Repo) parse() error {
 
 	last := "--since=\"5 years ago\""
 	if r.LastUpdated > 0 {
-		last = fmt.Sprintf("--since=%d", r.LastUpdated)
+		last = fmt.Sprintf("--since=%d", r.LastUpdated+1)
 	}
 
 	cmd := exec.Command("git", "log", "--all", "--shortstat", last, "--pretty=format:{\"author\":\"%aE\",\"date\":%ct,\"title\":\"%f\",\"hash\":\"%h\",\"ref\":\"%D\"}")
@@ -191,8 +178,7 @@ func (r *Repo) parse() error {
 func dbConnect() {
 
 	var err error
-
-	mongo, err = db.Connect(opt.DbURL)
+	db, err = sql.Open("postgres", opt.DbURL)
 	if err != nil {
 		log.Panicf("Failed to connect to database '%s': %s", opt.DbURL, err.Error())
 	}

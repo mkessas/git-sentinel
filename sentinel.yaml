@@ -149,8 +149,6 @@
   url: https://sentinel:xonkjtpjnupwkr5vddsczaqpj77qgp3hybv2u2asivmtyvwpvj4q@dev.azure.com/9spokes/9Spokes/_git/ui.onboarding-journey
 - name: service.alert
   url: https://sentinel:xonkjtpjnupwkr5vddsczaqpj77qgp3hybv2u2asivmtyvwpvj4q@dev.azure.com/9spokes/9Spokes/_git/service.alert
-- name: urlrting.b2b-connector-urlrting
-  url: https://sentinel:xonkjtpjnupwkr5vddsczaqpj77qgp3hybv2u2asivmtyvwpvj4q@dev.azure.com/9spokes/9Spokes/_git/urlrting.b2b-connector-urlrting
 - name: ui.header-app-tray-ui
   url: https://sentinel:xonkjtpjnupwkr5vddsczaqpj77qgp3hybv2u2asivmtyvwpvj4q@dev.azure.com/9spokes/9Spokes/_git/ui.header-app-tray-ui
 - name: etl.rbcbanking
