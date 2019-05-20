@@ -26,7 +26,7 @@ var db *sql.DB
 
 var opt struct {
 	LogLevel string `default:"INFO" split_words:"true"`
-	RepoList string `default:"sentinel.yaml" slit_words:"true"`
+	RepoList string `default:"sentinel.yaml" split_words:"true"`
 	DataDir  string `default:"/data" split_words:"true"`
 	DbURL    string `default:"postgres://postgres:docker@localhost/sentinel?sslmode=disable" split_words:"true"`
 }
@@ -64,7 +64,7 @@ func init() {
 func (r *Repo) save() error {
 
 	for _, c := range r.Commits {
-		_, err := db.Exec("INSERT INTO commits(hash, repo, author, date, title, ref, insertions, deletions) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+		_, err := db.Exec("INSERT INTO commits(hash, repo, author, date, title, ref, additions, deletions) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
 			c.Hash, c.Repo, c.Author, c.Date, c.Title, c.Ref, c.Insertions, c.Deletions)
 
 		if err != nil {
@@ -175,35 +175,44 @@ func (r *Repo) parse() error {
 	return nil
 }
 
-func dbConnect() {
+func dbConnect() error {
 
 	var err error
 	db, err = sql.Open("postgres", opt.DbURL)
 	if err != nil {
-		log.Panicf("Failed to connect to database '%s': %s", opt.DbURL, err.Error())
+		return fmt.Errorf("Failed to connect to database '%s': %s", opt.DbURL, err.Error())
 	}
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS commits (hash VARCHAR(12) NOT NULL PRIMARY KEY, repo VARCHAR(128), author VARCHAR(256), date BIGINT, title VARCHAR(256), ref VARCHAR(256),additions BIGINT, deletions BIGINT)")
+	if err != nil {
+		log.Printf("failed to create table: %v\n", err.Error())
+	}
+	for _, i := range []string{"date", "author", "repo"} {
+		db.Exec(fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s (%s)", i, "commits", i))
+	}
+	return nil
 }
 
-func loadRepos() {
+func loadRepos() error {
 
 	dat, err := ioutil.ReadFile(opt.RepoList)
 	if err != nil {
-		log.Printf("Failed to read repository definition: " + err.Error())
-		return
+		return fmt.Errorf("Failed to read repository definition: %s", err.Error())
 	}
 	err = yaml.Unmarshal(dat, &repos)
 	if err != nil {
-		log.Printf("Failed to parse configuration file: %s", err.Error())
+		return fmt.Errorf("Failed to parse configuration file: %s", err.Error())
 	}
+	return nil
 }
 
-func prepDataDir() {
+func prepDataDir() error {
 	if _, err := os.Stat(opt.DataDir); os.IsNotExist(err) {
 		err := os.MkdirAll(opt.DataDir, 0700)
 		if err != nil {
-			log.Panicf("Failed to create data directory: %s", err.Error())
+			return fmt.Errorf("Failed to create data directory: %s", err.Error())
 		}
 	}
+	return nil
 }
 
 func main() {
@@ -211,13 +220,22 @@ func main() {
 	log.Printf("Sentinel - A Git log analyzer v1.0.%%BUILD_ID%% Starting...")
 
 	log.Printf("Loading repository definitions file from '%s'...", opt.RepoList)
-	loadRepos()
+	if err := loadRepos(); err != nil {
+		log.Printf("%s", err.Error())
+		return
+	}
 
 	log.Printf("Preparing scratch directory '%s'", opt.DataDir)
-	prepDataDir()
+	if err := prepDataDir(); err != nil {
+		log.Printf("%s", err.Error())
+		return
+	}
 
 	log.Printf("Connecting to database...")
-	dbConnect()
+	if err := dbConnect(); err != nil {
+		log.Printf("%s", err.Error())
+		return
+	}
 
 	for _, r := range repos {
 
