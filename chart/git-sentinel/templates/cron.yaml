@@ -5,7 +5,7 @@ metadata:
   labels:
     chart: '{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}'
 spec:
-  schedule: "*/5 * * * *"
+  schedule: "0 * * * *"
   jobTemplate:
     spec:
       backoffLimit: 20
