@@ -42,7 +42,7 @@ steps:
       azureContainerRegistry: '$(azureContainerRegistry)'
       dockerFile: '**/Dockerfile'
       action: 'Build an image'
-      imageName: '$(Build.Repository.Name):$(Build.BuildNumber)-$(Build.SourceVersion)'
+      imageName: '$(BUILD_DEFINITIONNAME):latest'
   condition: and(succeeded(), or(startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
 
 # docker push image
@@ -52,7 +52,7 @@ steps:
       azureSubscription: 'Infrastructure (44fd9d24-0993-420f-bb46-861fbd85bc9c)'
       azureContainerRegistry: '$(azureContainerRegistry)'
       action: 'Push an image'
-      imageName: '$(Build.Repository.Name):$(Build.BuildNumber)-$(Build.SourceVersion)'
+      imageName: '$(BUILD_DEFINITIONNAME):latest'
   condition: and(succeeded(), or(startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
 
 
