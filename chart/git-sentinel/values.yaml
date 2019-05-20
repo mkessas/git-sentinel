@@ -23,17 +23,8 @@ postgresql:
   initdbScripts:
     init.sh: |
       echo "Init script started"
-      CREATE TABLE public.commits (
-          hash character varying(12) NOT NULL PRIMARY KEY,
-          repo character varying(128),
-          author character varying(256),
-          date bigint,
-          title character varying(256),
-          ref character varying(256),
-          insertions integer,
-          deletions integer
-      );
+      create table commits (hash varchar(12) NOT NULL PRIMARY KEY, repo varchar(128), author varchar(256), date bigint, title varchar(256), ref varchar(256), insertions int, deletions int );
       create index date on commits (date );
-      create index date on commits (author );
-      create index date on commits (repo );
+      create index author on commits (author );
+      create index repo on commits (repo );
       echo "Init script finished"
