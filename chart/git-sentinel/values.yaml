@@ -20,3 +20,21 @@ postgresql:
   imageTag: "9.6"
   persistence:
     enabled: false
+  initdbScripts:
+    init_script.sh:|
+      #!/bin/sh
+      echo "Init script started"
+      CREATE TABLE public.commits (
+          hash character varying(12) NOT NULL PRIMARY KEY,
+          repo character varying(128),
+          author character varying(256),
+          date bigint,
+          title character varying(256),
+          ref character varying(256),
+          insertions integer,
+          deletions integer
+      );
+      create index date on commits (date );
+      create index date on commits (author );
+      create index date on commits (repo );
+      echo "Init script finished"

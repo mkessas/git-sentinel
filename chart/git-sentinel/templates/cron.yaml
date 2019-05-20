@@ -34,9 +34,6 @@ spec:
             - name: config
               mountPath: /opt/git-sentinel/sentinel.yaml
               subPath: sentinel.yaml
-            - name: config
-              mountPath: /docker-entrypoint-initdb.d/init.sql
-              subPath: init.sql
           volumes:
           - name: config
             configMap:
