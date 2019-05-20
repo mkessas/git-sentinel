@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A Helm chart for the git-sentinel
+name: git-sentinel
+version: 1.0.0

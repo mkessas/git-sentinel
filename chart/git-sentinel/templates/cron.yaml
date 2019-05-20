@@ -1,0 +1,45 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: "{{  .Chart.Name }}-cronjob"
+  labels:
+    chart: '{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}'
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 20
+      template:
+        metadata:
+          labels:
+            app: "{{  .Chart.Name }}-selector"
+            version: "current"
+        spec:
+          serviceAccountName: default
+          restartPolicy: OnFailure
+          containers:
+          - name: "{{  .Chart.Name  }}"
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            resources:
+              requests:
+                cpu: "{{ .Values.image.resources.requests.cpu }}"
+                memory: "{{ .Values.image.resources.requests.memory }}"
+            # args:
+            # - -config=/opt/sentinel.yaml
+            env:
+              - name: SENTINEL_DB_URL
+                value: "postgres://{{ .Values.postgresql.postgresUser }}:{{ .Values.postgresql.postgresPassword }}@{{ template "postgresql.fullname" . }}:5432/{{ .Values.postgresql.postgresDatabase }}?sslmode=disable"
+            volumeMounts:
+            - name: config
+              mountPath: /opt/sentinel.yaml
+              subPath: sentinel.yaml
+            - name: config
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+          volumes:
+          - name: config
+            configMap:
+              name: git-sentinel-config
+          imagePullSecrets:
+            - name: registry

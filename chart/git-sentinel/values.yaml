@@ -1,0 +1,22 @@
+replicaCount: 1
+revisionHistoryLimit: 1
+image:
+  repository: 9spartifacts.azurecr.io/git-sentinel
+  tag: latest
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 200m
+      memory: 300Mi
+registryCredentials:
+  registry: 9spartifacts.azurecr.io
+  username: 4a46e455-fa29-4b97-9f5b-22c32ce00706
+  password: '28d1d922-f2d3-496d-aaed-16ca6f15c1ac'
+postgresql:
+  enabled: true
+  postgresUser: sentinel
+  postgresPassword: sentinel
+  postgresDatabase: sentinel
+  imageTag: "9.6"
+  persistence:
+    enabled: false
