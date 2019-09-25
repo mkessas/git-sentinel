@@ -20,6 +20,30 @@ SENTINEL_DATA_DIR=./data SENTINEL_DB_URL="postgres://postgres:docker@localhost/s
 2019/05/19 20:45:39 [etl.googleanalytics] Finished processing repository
 ```
 
+## Configuration
+
+The format of the input `sentinel.yaml` file should follow this scheme:
+
+```yaml
+- name: My Repo
+  dir: my-repo
+  url: https://github.com/me/my-repo
+```
+
+## Database
+
+The application will automatically create the relevant database tables, but the database `sentinel` must be pre-created:
+
+```
+postgres=# create database sentinel;
+```
+
+## Get a List of Repos from Azure DevOps
+
+```sh
+$ curl https://dev.azure.com/myOrg/myProject/_apis/git/repositories?api-version=4.1 -u :my-at -sq | jq '.value[].sshUrl' > sentinel.yaml
+```
+
 ## Requirements
 
 - **PostgreSQL**:  The tool has been refactored to use a PostgreSQL backend in order to facilitate integration with various BI tools.
