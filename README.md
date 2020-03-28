@@ -34,17 +34,18 @@ The format of the input `sentinel.yaml` file should follow this scheme:
 
 The application will automatically create the relevant database tables, but the database `sentinel` must be pre-created:
 
-```
+```postgres
 postgres=# create database sentinel;
 ```
 
 ## Get a List of Repos from Azure DevOps
 
-```sh
-$ curl https://dev.azure.com/myOrg/myProject/_apis/git/repositories?api-version=4.1 -u :my-at -sq | jq '.value[].sshUrl' > sentinel.yaml
-```
+A convenience script `get_repos.sh` is included which retrives all the Git repos from Azure DevOps and produces a `sentinel.yaml` file. It requires inputing the `ORG`, `PROJECT` and `PAT`.
+
+1. Edit `get_repos.sh` and input your project details including your Personal Access Token (PAT)
+1. Run the script: `$ ./get_repos.sh`
 
 ## Requirements
 
-- **PostgreSQL**:  The tool has been refactored to use a PostgreSQL backend in order to facilitate integration with various BI tools.
+- **PostgreSQL**: The tool has been refactored to use a PostgreSQL backend in order to facilitate integration with various BI tools.
 - **Storage**: Sufficient capacity to store all the repositories
